@@ -2,3 +2,6 @@ passwords.vault
 *.vault
 __pycache__/
 *.pyc
+build/
+dist/
+*.spec
