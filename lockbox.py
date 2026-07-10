@@ -2,7 +2,7 @@
 """LockBox: password manager with an AES-256-GCM encrypted vault."""
 import tkinter as tk
 from tkinter import messagebox
-import json, secrets, random, string, sys
+import json, os, secrets, random, string, sys
 from datetime import datetime
 from pathlib import Path
 
@@ -10,12 +10,28 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 
-if getattr(sys, "frozen", False):
-    APP_DIR = Path(sys.executable).parent
-else:
-    APP_DIR = Path(__file__).parent
+APP_DIR = Path(__file__).parent
 
-VAULT_PATH = APP_DIR / "passwords.vault"
+def _config_path() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA", Path.home())) / "LockBox" / "config.json"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "lockbox" / "config.json"
+
+def _load_vault_path() -> Path:
+    cfg = _config_path()
+    try:
+        return Path(json.loads(cfg.read_text())["vault_path"]).expanduser()
+    except (OSError, KeyError, ValueError):
+        pass
+    default = APP_DIR / "passwords.vault"
+    try:
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        cfg.write_text(json.dumps({"vault_path": str(default)}, indent=2))
+    except OSError:
+        pass
+    return default
+
+VAULT_PATH = _load_vault_path()
 
 BG      = "#0a0c10"
 SURFACE = "#111318"
@@ -40,16 +56,18 @@ def vault_load(password: str) -> list:
     pt  = AESGCM(_derive_key(password, raw[:16])).decrypt(raw[16:28], raw[28:], None)
     return json.loads(pt)
 
+_rng = random.SystemRandom()
+
 def generate_password(length: int = 16, symbols: bool = True) -> str:
     sym  = "!@#$%^&*()-_=+[]{}|;:,.<>?"
     pool = string.ascii_letters + string.digits + (sym if symbols else "")
-    base = [random.choice(string.ascii_lowercase),
-            random.choice(string.ascii_uppercase),
-            random.choice(string.digits)]
+    base = [_rng.choice(string.ascii_lowercase),
+            _rng.choice(string.ascii_uppercase),
+            _rng.choice(string.digits)]
     if symbols:
-        base.append(random.choice(sym))
-    pw = base + [random.choice(pool) for _ in range(length - len(base))]
-    random.shuffle(pw)
+        base.append(_rng.choice(sym))
+    pw = base + [_rng.choice(pool) for _ in range(length - len(base))]
+    _rng.shuffle(pw)
     return "".join(pw)
 
 def check_strength(pw: str) -> tuple:
