@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Password manager with encrypted vault — AES-256-GCM + PBKDF2
-Passwords are never stored in plain text.
-"""
+"""LockBox: password manager with an AES-256-GCM encrypted vault."""
 import tkinter as tk
 from tkinter import messagebox
 import json, secrets, random, string, sys
@@ -20,7 +17,6 @@ else:
 
 VAULT_PATH = APP_DIR / "passwords.vault"
 
-# ── Palette ─────────────────────────────────────────────
 BG      = "#0a0c10"
 SURFACE = "#111318"
 BORDER  = "#1e2230"
@@ -28,8 +24,6 @@ ACCENT  = "#00e5ff"
 TEXT    = "#e2e8f0"
 MUTED   = "#4a5568"
 DANGER  = "#ff4444"
-
-# ── Crypto ──────────────────────────────────────────────
 
 def _derive_key(password: str, salt: bytes) -> bytes:
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600_000)
@@ -45,8 +39,6 @@ def vault_load(password: str) -> list:
     raw = VAULT_PATH.read_bytes()
     pt  = AESGCM(_derive_key(password, raw[:16])).decrypt(raw[16:28], raw[28:], None)
     return json.loads(pt)
-
-# ── Generator ────────────────────────────────────────────
 
 def generate_password(length: int = 16, symbols: bool = True) -> str:
     sym  = "!@#$%^&*()-_=+[]{}|;:,.<>?"
@@ -70,8 +62,6 @@ def check_strength(pw: str) -> tuple:
               ("Strong","#44aaff"),("Very strong","#44ff88"),("Very strong","#44ff88")]
     return levels[min(p, 5)]
 
-# ── App ──────────────────────────────────────────────────
-
 class VaultApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -88,8 +78,6 @@ class VaultApp(tk.Tk):
         self._entries:   list       = []
         self._show_lock()
 
-    # ── Lock screen ──────────────────────────────────────
-
     def _show_lock(self):
         self._clear()
 
@@ -100,15 +88,13 @@ class VaultApp(tk.Tk):
                         highlightthickness=1, highlightbackground=BORDER)
         card.pack()
 
-        tk.Label(card, text="🔐", font=("Segoe UI Emoji", 34),
-                 bg=SURFACE, fg=TEXT).pack()
         tk.Label(card, text="LockBox", font=("Segoe UI", 18, "bold"),
-                 bg=SURFACE, fg=TEXT).pack(pady=(6,2))
+                 bg=SURFACE, fg=TEXT).pack(pady=(0,2))
 
         if VAULT_PATH.exists():
             sub = "Enter your master password"
         else:
-            sub = "First time — create your master password"
+            sub = "First time: create your master password"
 
         tk.Label(card, text=sub, font=("Segoe UI", 9),
                  bg=SURFACE, fg=MUTED).pack(pady=(0,18))
@@ -139,7 +125,7 @@ class VaultApp(tk.Tk):
 
         if not VAULT_PATH.exists():
             if len(pw) < 6:
-                self._err_var.set("⚠ Minimum 6 characters")
+                self._err_var.set("Minimum 6 characters")
                 return
             vault_save([], pw)
             self._master_pw = pw
@@ -152,10 +138,8 @@ class VaultApp(tk.Tk):
             self._master_pw = pw
             self._show_main()
         except Exception:
-            self._err_var.set("⚠ Incorrect password")
+            self._err_var.set("Incorrect password")
             self._pw_var.set("")
-
-    # ── Main screen ──────────────────────────────────────
 
     def _show_main(self):
         self._clear()
@@ -164,7 +148,7 @@ class VaultApp(tk.Tk):
                        highlightthickness=0)
         hdr.pack(fill="x")
 
-        tk.Label(hdr, text="🔐  LockBox", font=("Segoe UI", 13, "bold"),
+        tk.Label(hdr, text="LockBox", font=("Segoe UI", 13, "bold"),
                  bg=SURFACE, fg=TEXT).pack(side="left")
 
         right = tk.Frame(hdr, bg=SURFACE)
@@ -175,7 +159,7 @@ class VaultApp(tk.Tk):
                   relief="flat", padx=12, pady=4, cursor="hand2",
                   command=self._dialog_add).pack(side="left", padx=(0,8))
 
-        tk.Button(right, text="🔒 Lock", font=("Segoe UI", 9),
+        tk.Button(right, text="Lock", font=("Segoe UI", 9),
                   bg=SURFACE, fg=MUTED, activebackground=BORDER, activeforeground=TEXT,
                   relief="flat", padx=10, pady=4, cursor="hand2",
                   command=self._lock).pack(side="left")
@@ -250,7 +234,7 @@ class VaultApp(tk.Tk):
                  bg=SURFACE, fg=MUTED).pack(side="right")
 
         if entry.get("usuario"):
-            tk.Label(card, text=f"👤  {entry['usuario']}", font=("Segoe UI", 9),
+            tk.Label(card, text=entry["usuario"], font=("Segoe UI", 9),
                      bg=SURFACE, fg=MUTED).pack(anchor="w", pady=(4,0))
 
         pw_frame = tk.Frame(card, bg="#0d0f14", padx=10, pady=6,
@@ -270,7 +254,7 @@ class VaultApp(tk.Tk):
         btns = tk.Frame(card, bg=SURFACE)
         btns.pack(fill="x")
 
-        tk.Button(btns, text="👁  Show", font=("Segoe UI", 8, "bold"),
+        tk.Button(btns, text="Show", font=("Segoe UI", 8, "bold"),
                   bg=BORDER, fg=TEXT, activebackground="#2a313d", activeforeground=TEXT,
                   relief="flat", padx=10, pady=3, cursor="hand2",
                   command=toggle).pack(side="left", padx=(0,6))
@@ -280,7 +264,7 @@ class VaultApp(tk.Tk):
             self.clipboard_append(e["password"])
             self.after(2000, self.clipboard_clear)
 
-        tk.Button(btns, text="📋  Copy", font=("Segoe UI", 8, "bold"),
+        tk.Button(btns, text="Copy", font=("Segoe UI", 8, "bold"),
                   bg=ACCENT, fg="#000", activebackground="#00b8cc", activeforeground="#000",
                   relief="flat", padx=10, pady=3, cursor="hand2",
                   command=copy).pack(side="left", padx=(0,6))
@@ -292,12 +276,10 @@ class VaultApp(tk.Tk):
                 vault_save(self._entries, self._master_pw)
                 self._render()
 
-        tk.Button(btns, text="🗑", font=("Segoe UI", 10),
+        tk.Button(btns, text="Delete", font=("Segoe UI", 8, "bold"),
                   bg=SURFACE, fg=DANGER, activebackground=BORDER, activeforeground=DANGER,
-                  relief="flat", padx=8, pady=2, cursor="hand2",
+                  relief="flat", padx=10, pady=3, cursor="hand2",
                   command=delete).pack(side="right")
-
-    # ── Add dialog ───────────────────────────────────────
 
     def _dialog_add(self):
         dlg = tk.Toplevel(self)
@@ -345,7 +327,7 @@ class VaultApp(tk.Tk):
             e_pw.delete(0, "end")
             e_pw.insert(0, generate_password(16, True))
 
-        tk.Button(pw_row, text="⚡ Generate", font=("Segoe UI", 8, "bold"),
+        tk.Button(pw_row, text="Generate", font=("Segoe UI", 8, "bold"),
                   bg=ACCENT, fg="#000", activebackground="#00b8cc", activeforeground="#000",
                   relief="flat", padx=8, pady=7, cursor="hand2",
                   command=generate).pack(side="left", padx=(6,0))
@@ -376,8 +358,6 @@ class VaultApp(tk.Tk):
                   command=save).pack(pady=(4,0))
 
         e_pw.bind("<Return>", lambda _: save())
-
-    # ── Utils ────────────────────────────────────────────
 
     def _lock(self):
         self._master_pw = None
